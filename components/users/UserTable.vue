@@ -1,240 +1,280 @@
 <template>
-  <div class="bg-white rounded-lg m-2">
-    <div class="flex justify-between items-center mb-6 ml-2">
-      <div class="flex space-x-2">
-        <SearchInput />
-      </div>
-      <div class="flex space-x-2 mr-4 mt-2">
-        <button
-          v-if="selectedItems.length >= 1"
-          @click="deleteSelectedItems"
-          class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md shadow-md transition duration-150 ease-in-out cursor-pointer"
-        >
-          Delete Selected
-        </button>
-        <button
-          @click="openAddDialog"
-          class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md shadow-md transition duration-150 ease-in-out cursor-pointer"
-        >
-          <i class="pi pi-user-plus" style="font-size: 1rem"></i>
-        </button>
-      </div>
-    </div>
-    <div class="overflow-auto">
-      <table class="w-full bg-white table-auto border-gray-300 border-2">
-        <thead>
-          <tr>
-            <th class="bg-blue-500 pl-3 pt-2 text-left w-12">
-              <input
-                type="checkbox"
-                @change="toggleSelectAll"
-                :checked="isAllSelected"
-                class="cursor-pointer w-4 h-4"
-              />
-            </th>
-            <th
-              v-for="column in columns"
-              :key="column.key"
-              class="bg-blue-500 p-1.5 text-lg text-white group cursor-pointer w-[180px]"
-              @click="handleColumnSort(column.key)"
-            >
-              <div class="flex items-center">
-                {{ column.key }}
-                <i
-                  class="pi pi-arrow-down"
-                  :class="{
-                    'rotate-0': sortBy === column.key && sortOrder === 'asc',
-                    'rotate-180': sortBy === column.key && sortOrder === 'desc',
-                    'opacity-100 visible': sortBy === column.key,
-                    'opacity-0 group-hover:opacity-100 group-hover:visible':
-                      sortBy !== column.key,
-                  }"
-                  style="font-size: 0.8rem"
-                ></i>
-              </div>
-            </th>
-            <th class="bg-blue-500 text-lg text-white text-center w-20">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="item in paginatedItems"
-            :key="item.id"
-            class="border-b border-gray-300 bg-white hover:bg-gray-100 transition duration-150 ease-in-out"
-          >
-            <td class="pl-3 pt-1.5 items-center">
-              <input
-                type="checkbox"
-                :value="item.id"
-                v-model="selectedItems"
-                class="cursor-pointer w-4 h-4"
-              />
-            </td>
+  <ThemeSwitcher />
+  <div>
+      <div class="card">
+          <Toolbar class="mb-6">
+              <template #start>
+                  <Button label="New" icon="pi pi-plus" class="mr-2" @click="openNew" />
+                  <Button label="Delete" icon="pi pi-trash" severity="danger" outlined @click="confirmDeleteSelected" :disabled="!selectedProducts || !selectedProducts.length" />
+              </template>
 
-            <!-- Duyệt qua từng cột -->
-            <td v-for="column in columns" :key="column.key" class="py-4 px-2">
-              <template v-if="editingRow === item.id">
-                <component
-                  :is="column.inputType || 'input'"
-                  v-model="editedItem[column.key]"
-                  class="border border-gray-600 p-1 rounded"
-                />
+          </Toolbar>
+
+          <DataTable
+              ref="dt"
+              v-model:selection="selectedProducts"
+              :value="products"
+              dataKey="id"
+              :paginator="true"
+              :rows="10"
+              :filters="filters"
+              paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+              :rowsPerPageOptions="[5, 10, 25]"
+              currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
+          >
+              <template #header>
+                  <div class="flex flex-wrap gap-2 items-center justify-between">
+                      <h4 class="m-0">Manage Products</h4>
+                      <IconField>
+                          <InputIcon>
+                              <i class="pi pi-search" />
+                          </InputIcon>
+                          <InputText v-model="filters['global'].value" placeholder="Search..." />
+                      </IconField>
+                  </div>
               </template>
-              <template v-else>
-                {{ item[column.key] }}
-              </template>
-            </td>
-            <td class="text-right">
-              <button
-                v-if="editingRow === item.id"
-                @click="saveEdit(item.id)"
-                class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-md shadow-md transition duration-150 ease-in-out mr-5 cursor-pointer"
+
+              <Column selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
+              <Column field="code" header="Code" sortable style="min-width: 12rem"></Column>
+              <Column field="name" header="Name" sortable style="min-width: 16rem"></Column>
+              <Column header="Image">
+                  <template #body="slotProps">
+                      <img :src="`https://primefaces.org/cdn/primevue/images/product/${slotProps.data.image}`" :alt="slotProps.data.image" class="rounded" style="width: 64px" />
+                  </template>
+              </Column>
+              <Column field="price" header="Price" sortable style="min-width: 8rem">
+                  <template #body="slotProps">
+                      {{ formatCurrency(slotProps.data.price) }}
+                  </template>
+              </Column>
+              <Column field="category" header="Category" sortable style="min-width: 10rem"></Column>
+              <Column field="rating" header="Reviews" sortable style="min-width: 12rem">
+                  <template #body="slotProps">
+                      <Rating :modelValue="slotProps.data.rating" :readonly="true" />
+                  </template>
+              </Column>
+              <Column field="inventoryStatus" header="Status" sortable style="min-width: 12rem">
+                  <template #body="slotProps">
+                      <Tag :value="slotProps.data.inventoryStatus" :severity="getStatusLabel(slotProps.data.inventoryStatus)" />
+                  </template>
+              </Column>
+              <Column :exportable="false" style="min-width: 12rem">
+                  <template #body="slotProps">
+                      <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="editProduct(slotProps.data)" />
+                      <Button icon="pi pi-trash" outlined rounded severity="danger" @click="confirmDeleteProduct(slotProps.data)" />
+                  </template>
+              </Column>
+          </DataTable>
+      </div>
+
+      <Dialog v-model:visible="productDialog" :style="{ width: '450px' }" header="Product Details" :modal="true">
+          <div class="flex flex-col gap-6">
+              <img v-if="product.image" :src="`https://primefaces.org/cdn/primevue/images/product/${product.image}`" :alt="product.image" class="block m-auto pb-4" />
+              <div>
+                  <label for="name" class="block font-bold mb-3">Name</label>
+                  <InputText id="name" v-model.trim="product.name" required="true" autofocus :invalid="submitted && !product.name" fluid />
+                  <small v-if="submitted && !product.name" class="text-red-500">Name is required.</small>
+              </div>
+              <div>
+                  <label for="description" class="block font-bold mb-3">Description</label>
+                  <Textarea id="description" v-model="product.description" required="true" rows="3" cols="20" fluid />
+              </div>
+              <div>
+                  <label for="inventoryStatus" class="block font-bold mb-3">Inventory Status</label>
+                  <Select id="inventoryStatus" v-model="product.inventoryStatus" :options="statuses" optionLabel="label" placeholder="Select a Status" fluid></Select>
+              </div>
+
+              <div>
+                  <span class="block font-bold mb-4">Category</span>
+                  <div class="grid grid-cols-12 gap-4">
+                      <div class="flex items-center gap-2 col-span-6">
+                          <RadioButton id="category1" v-model="product.category" name="category" value="Accessories" />
+                          <label for="category1">Accessories</label>
+                      </div>
+                      <div class="flex items-center gap-2 col-span-6">
+                          <RadioButton id="category2" v-model="product.category" name="category" value="Clothing" />
+                          <label for="category2">Clothing</label>
+                      </div>
+                      <div class="flex items-center gap-2 col-span-6">
+                          <RadioButton id="category3" v-model="product.category" name="category" value="Electronics" />
+                          <label for="category3">Electronics</label>
+                      </div>
+                      <div class="flex items-center gap-2 col-span-6">
+                          <RadioButton id="category4" v-model="product.category" name="category" value="Fitness" />
+                          <label for="category4">Fitness</label>
+                      </div>
+                  </div>
+              </div>
+
+              <div class="grid grid-cols-12 gap-4">
+                  <div class="col-span-6">
+                      <label for="price" class="block font-bold mb-3">Price</label>
+                      <InputNumber id="price" v-model="product.price" mode="currency" currency="USD" locale="en-US" fluid />
+                  </div>
+                  <div class="col-span-6">
+                      <label for="quantity" class="block font-bold mb-3">Quantity</label>
+                      <InputNumber id="quantity" v-model="product.quantity" integeronly fluid />
+                  </div>
+              </div>
+          </div>
+
+          <template #footer>
+              <Button label="Cancel" icon="pi pi-times" text @click="hideDialog" />
+              <Button label="Save" icon="pi pi-check" @click="saveProduct" />
+          </template>
+      </Dialog>
+
+      <Dialog v-model:visible="deleteProductDialog" :style="{ width: '450px' }" header="Confirm" :modal="true">
+          <div class="flex items-center gap-4">
+              <i class="pi pi-exclamation-triangle !text-3xl" />
+              <span v-if="product"
+                  >Are you sure you want to delete <b>{{ product.name }}</b
+                  >?</span
               >
-                <i class="pi pi-save" style="font-size: 1rem"></i>
-              </button>
-              <button
-                v-else
-                @click="startEdit(item)"
-                class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md shadow-md transition duration-150 ease-in-out cursor-pointer m-5"
-              >
-                <i class="pi pi-pencil" style="font-size: 1rem"></i>
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="flex justify-end">
-      <Pagination />
-    </div>
-  </div>
-  <EditProduct
-    v-if="isDialogOpen"
-    :modelValue="selectedItems"
-    :isOpen="isDialogOpen"
-    @save="handleSave"
-    @close="closeDialog"
-  />
+          </div>
+          <template #footer>
+              <Button label="No" icon="pi pi-times" text @click="deleteProductDialog = false" />
+              <Button label="Yes" icon="pi pi-check" @click="deleteProduct" />
+          </template>
+      </Dialog>
+
+      <Dialog v-model:visible="deleteProductsDialog" :style="{ width: '450px' }" header="Confirm" :modal="true">
+          <div class="flex items-center gap-4">
+              <i class="pi pi-exclamation-triangle !text-3xl" />
+              <span v-if="product">Are you sure you want to delete the selected products?</span>
+          </div>
+          <template #footer>
+              <Button label="No" icon="pi pi-times" text @click="deleteProductsDialog = false" />
+              <Button label="Yes" icon="pi pi-check" text @click="deleteSelectedProducts" />
+          </template>
+      </Dialog>
+</div>
 </template>
 
-<script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
-import { storeToRefs } from "pinia";
-import SearchInput from "../common/SearchInput.vue";
-import { useDataStore } from "../../stores/dataStore";
-import Swal from "sweetalert2";
-import Pagination from "../common/Pagination.vue";
-import { usePaginationStore } from "../../stores/paginationStore";
-import EditProduct from "./EditProduct.vue";
-import NumberInput from "../common/NumberInput.vue";
-import TextInput from "../common/TextInput.vue";
-interface Product {
-  id: string;
-  ProductName: string;
-  Category: string; 
-  Price: number;
-  Stock: number;
-}
-interface Column {
-  key: keyof Product;
-  inputType?: any;
-}
-//store
-const productStore = useDataStore();
-const paginationStore = usePaginationStore();
-const { currentPage, pageSize } = storeToRefs(paginationStore);
-const { sortedItems, sortBy, sortOrder } = storeToRefs(productStore);
-//data
-const editingRow = ref<string | null>(null);
-const editedItem = ref<Partial<Product>>({});
-const selectedItems = ref<string[]>([]);
-const isDialogOpen = ref(false);
-const columns = ref<Column[]>([
-  { key: "ProductName", inputType: TextInput },
-  { key: "Category", inputType: TextInput },
-  { key: "Price", inputType: NumberInput },
-  { key: "Stock", inputType: NumberInput },
-]);
-
-const isAllSelected = computed(
-  () => selectedItems.value.length === sortedItems.value.length
-);
-const paginatedItems = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value;
-  return sortedItems.value.slice(start, start + pageSize.value);
-});
+<script setup>
+import { ref, onMounted } from 'vue';
+import { FilterMatchMode } from '@primevue/core/api';
+import { useToast } from 'primevue/usetoast';
+import { ProductService } from '@/service/ProductService';
 
 onMounted(() => {
-  productStore.SetApi("https://660bb670ccda4cbc75dd7d2f.mockapi.io/products");
-  productStore.fetchData();
+  ProductService.getProducts().then((data) => (products.value = data));
 });
 
-watch(
-  sortedItems,
-  () => {
-    paginationStore.setTotalItems(sortedItems.value.length);
-  },
-  { immediate: true }
-);
+const toast = useToast();
+const dt = ref();
+const products = ref();
+const productDialog = ref(false);
+const deleteProductDialog = ref(false);
+const deleteProductsDialog = ref(false);
+const product = ref({});
+const selectedProducts = ref();
+const filters = ref({
+  'global': {value: null, matchMode: FilterMatchMode.CONTAINS},
+});
+const submitted = ref(false);
+const statuses = ref([
+  {label: 'INSTOCK', value: 'instock'},
+  {label: 'LOWSTOCK', value: 'lowstock'},
+  {label: 'OUTOFSTOCK', value: 'outofstock'}
+]);
 
-function toggleSelectAll(event: Event) {
-  const target = event.target as HTMLInputElement;
-  selectedItems.value = target.checked
-    ? sortedItems.value
-        .map((item) => item.id)
-        .filter((id): id is string => id !== undefined)
-    : [];
+const formatCurrency = (value) => {
+  if(value)
+      return value.toLocaleString('en-US', {style: 'currency', currency: 'USD'});
+  return;
+};
+const openNew = () => {
+  product.value = {};
+  submitted.value = false;
+  productDialog.value = true;
+};
+const hideDialog = () => {
+  productDialog.value = false;
+  submitted.value = false;
+};
+const saveProduct = () => {
+  submitted.value = true;
+
+  if (product?.value.name?.trim()) {
+      if (product.value.id) {
+          product.value.inventoryStatus = product.value.inventoryStatus.value ? product.value.inventoryStatus.value : product.value.inventoryStatus;
+          products.value[findIndexById(product.value.id)] = product.value;
+          toast.add({severity:'success', summary: 'Successful', detail: 'Product Updated', life: 3000});
+      }
+      else {
+          product.value.id = createId();
+          product.value.code = createId();
+          product.value.image = 'product-placeholder.svg';
+          product.value.inventoryStatus = product.value.inventoryStatus ? product.value.inventoryStatus.value : 'INSTOCK';
+          products.value.push(product.value);
+          toast.add({severity:'success', summary: 'Successful', detail: 'Product Created', life: 3000});
+      }
+
+      productDialog.value = false;
+      product.value = {};
+  }
+};
+const editProduct = (prod) => {
+  product.value = {...prod};
+  productDialog.value = true;
+};
+const confirmDeleteProduct = (prod) => {
+  product.value = prod;
+  deleteProductDialog.value = true;
+};
+const deleteProduct = () => {
+  products.value = products.value.filter(val => val.id !== product.value.id);
+  deleteProductDialog.value = false;
+  product.value = {};
+  toast.add({severity:'success', summary: 'Successful', detail: 'Product Deleted', life: 3000});
+};
+const findIndexById = (id) => {
+  let index = -1;
+  for (let i = 0; i < products.value.length; i++) {
+      if (products.value[i].id === id) {
+          index = i;
+          break;
+      }
+  }
+
+  return index;
+};
+const createId = () => {
+  let id = '';
+  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  for ( var i = 0; i < 5; i++ ) {
+      id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
 }
-
-const deleteSelectedItems = () => {
-  productStore.deleteMultipleItems(selectedItems.value);
-  selectedItems.value = [];
+const exportCSV = () => {
+  dt.value.exportCSV();
+};
+const confirmDeleteSelected = () => {
+  deleteProductsDialog.value = true;
+};
+const deleteSelectedProducts = () => {
+  products.value = products.value.filter(val => !selectedProducts.value.includes(val));
+  deleteProductsDialog.value = false;
+  selectedProducts.value = null;
+  toast.add({severity:'success', summary: 'Successful', detail: 'Products Deleted', life: 3000});
 };
 
-function handleColumnSort(columnKey: keyof Product) {
-  productStore.toggleSort(columnKey);
-}
+const getStatusLabel = (status) => {
+  switch (status) {
+      case 'INSTOCK':
+          return 'success';
 
-const startEdit = (item: any) => {
-  editingRow.value = item.id;
-  editedItem.value = { ...item };
-};
+      case 'LOWSTOCK':
+          return 'warn';
 
-const saveEdit = async (itemId: string) => {
-  try {
-    console.log("Updating item:", itemId, editedItem.value);
-    await productStore.updateItem(itemId, editedItem.value); // Gọi API cập nhật
-    const index = productStore.items.findIndex((item) => item.id === itemId); // Cập nhật lại danh sách hiển thị
-    if (index !== -1) {
-      productStore.items[index] = { ...editedItem.value };
-    }
-    editingRow.value = null;
-    Swal.fire("Save Info User Successfully!", "", "success");
-  } catch (error) {
-    console.error("Update error:", error);
-    Swal.fire("error!", "", "error");
+      case 'OUTOFSTOCK':
+          return 'danger';
+
+      default:
+          return null;
   }
 };
 
-const openAddDialog = () => {
-  selectedItems.value = [];
-  isDialogOpen.value = true;
-};
-const closeDialog = () => {
-  isDialogOpen.value = false;
-};
-
-const handleSave = async (updatedProduct: Product) => {
-  await productStore.updateItem(updatedProduct.id, updatedProduct);
-  selectedItems.value = [];
-  closeDialog();
-};
-watch(
-  () => sortedItems.value,
-  () => {
-    selectedItems.value = [];
-  }
-);
 </script>
