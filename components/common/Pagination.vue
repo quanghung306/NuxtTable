@@ -35,7 +35,8 @@
   </template>
   
   <script setup lang="ts">
-  
+import { storeToRefs } from 'pinia';
+
   const paginationStore = usePaginationStore();
   const { currentPage, totalPages } = storeToRefs(paginationStore);
   const { setPage } = paginationStore;
