@@ -1,6 +1,5 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import Swal from "sweetalert2";
 import axios from "axios";
 
 interface Item {
@@ -18,32 +17,25 @@ export const useDataStore = defineStore("data", () => {
   const searchQuery = ref<string>("");
   const apiURL = ref<string>("");
 
-  // Set the API URL
+  // Set API URL
   const SetApi = (url: string) => {
     apiURL.value = url;
   };
 
-  // Fetch data from the API
+  // Fetch data from API
   const fetchData = async () => {
     if (!apiURL.value) return;
     try {
-      Swal.fire({
-        title: "Loading...",
-        text: "Loading data, please wait!",
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
-      });
+      console.log("🔄 Fetching data...");
       const response = await axios.get<Item[]>(apiURL.value);
       items.value = response.data || [];
-      Swal.close();
+      console.log("✅ Data loaded successfully.");
     } catch (error) {
-      Swal.fire("Error loading data!!", "", "error");
+      alert("❌ Error loading data!");
     }
   };
 
-  // Getter to sort and Search items
+  // Getter: Sort & Search
   const sortedItems = computed<Item[]>(() => {
     let list = items.value;
     if (searchQuery.value) {
@@ -60,7 +52,7 @@ export const useDataStore = defineStore("data", () => {
     });
   });
 
- //Actions
+  // Actions
   const toggleSort = (columnKey: string) => {
     if (sortBy.value === columnKey) {
       sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
@@ -73,15 +65,12 @@ export const useDataStore = defineStore("data", () => {
   const setSearchQuery = (query: string) => {
     searchQuery.value = query;
   };
+
   const saveItem = async (newItem: Item): Promise<boolean> => {
     if (!apiURL.value) return false;
     try {
       if (!newItem.Name && !newItem.ProductName) {
-        Swal.fire({
-          icon: "error",
-          title: "Oops...",
-          text: "Please enter complete information!",
-        });
+        alert("❌ Please enter complete information!");
         return false;
       }
 
@@ -90,64 +79,50 @@ export const useDataStore = defineStore("data", () => {
         items.value = items.value.map((item) =>
           item.id === newItem.id ? newItem : item
         );
-        Swal.fire("Update Successfully!", "", "success");
+        alert("✅ Update Successfully!");
       } else {
         const response = await axios.post<Item>(apiURL.value, newItem);
         items.value.push(response.data);
-        Swal.fire("Added Successfully!", "", "success");
+        alert("✅ Added Successfully!");
       }
       return true;
     } catch (error) {
-      Swal.fire({ icon: "error", title: "Oops...", text: "Can't save item!" });
+      alert("❌ Can't save item!");
       return false;
     }
   };
 
-  const deleteItems = async (itemId: string) => {
+  const deleteItem = async (itemId: string) => {
     if (!apiURL.value) return;
     try {
-      const url = `${apiURL.value}/${itemId}`;
-      await axios.delete(url);
+      await axios.delete(`${apiURL.value}/${itemId}`);
       items.value = items.value.filter((item) => item.id !== itemId);
+      alert("✅ Deleted successfully!");
     } catch (error) {
-      Swal.fire("Failed to delete!", "", "error");
+      console.error("❌ Delete error:", error);
     }
   };
+
   const deleteMultipleItems = async (selectedIds: string[]) => {
     if (selectedIds.length === 0) {
-      Swal.fire("No items selected!", "", "info");
+      alert("ℹ️ No items selected!");
       return;
     }
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: `Delete ${selectedIds.length} items? This action cannot be undone!`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Delete!",
-      cancelButtonText: "Cancel",
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-    });
-    if (!result.isConfirmed) return; 
-    Swal.fire({
-      title: "Deleting...",
-      text: "Please wait while deleting items!",
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
-    });
 
+    const isConfirmed = confirm(`🛑 Delete ${selectedIds.length} items?`);
+    if (!isConfirmed) return;
+
+    console.log("🗑️ Deleting items...");
     try {
       for (const id of selectedIds) {
-        await new Promise((resolve) => setTimeout(resolve, 300)); // 🔥 Delay nhẹ
         await axios.delete(`${apiURL.value}/${id}`);
         items.value = items.value.filter((item) => item.id !== id);
       }
-      await fetchData(); // 🔄 Fetch lại danh sách
-      Swal.fire("Deleted!", "", "success");
+      await fetchData();
+      alert("✅ Deleted successfully!");
     } catch (error) {
-      Swal.fire("Failed to delete!", "Something went wrong", "error");
+      console.error("❌ Delete error:", error);
+      alert("❌ Failed to delete!");
     }
   };
 
@@ -159,7 +134,7 @@ export const useDataStore = defineStore("data", () => {
       );
       return response.data;
     } catch (error) {
-      console.error("Update error:", error);
+      console.error("❌ Update error:", error);
       throw error;
     }
   };
@@ -174,7 +149,7 @@ export const useDataStore = defineStore("data", () => {
     toggleSort,
     setSearchQuery,
     saveItem,
-    deleteItems,
+    deleteItem,
     deleteMultipleItems,
     fetchData,
     updateItem,

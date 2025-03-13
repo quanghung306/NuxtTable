@@ -6,7 +6,7 @@ export default defineNuxtConfig({
   css: ["primeicons/primeicons.css"],
   primevue: {
     options: {
-      ripple: true, // Bật hiệu ứng Ripple
+      ripple: true, 
       inputVariant: "filled", // Kiểu input mặc định
         theme: {
             preset: Aura,
