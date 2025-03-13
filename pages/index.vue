@@ -1,11 +1,10 @@
 <template>
   <div>
-     <UserTable />
+    <UsersListTable />
   </div>
 </template>
 
 <script setup lang="ts">
-
 import { useAuthStore } from "../stores/authStore";
 
 // definePageMeta({
@@ -14,8 +13,8 @@ import { useAuthStore } from "../stores/authStore";
 
 const authStore = useAuthStore();
 
-const handleLogout = () => {
-  authStore.logout();
-  navigateTo("/login");
-};
+// const handleLogout = () => {
+//   authStore.logout();
+//   navigateTo("/login");
+// };
 </script>
