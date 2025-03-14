@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "nuxt/app";
 
 interface User {
@@ -10,28 +10,35 @@ interface User {
 export const useAuthStore = defineStore("auth", () => {
   const user = ref<User | null>(null);
   const isLoading = ref<boolean>(false);
-  const errorMessage = ref<string>("");
+  const errorMessage = ref<string | null>(null);
   const router = useRouter();
-
-  const isClient = typeof window !== "undefined"; // ✅ Kiểm tra client-side
+  const route = useRoute();
+  // ✅ Kiểm tra localStorage chỉ khi đang chạy trên client
+  const isClient = typeof window !== "undefined";
 
   const getRegisteredUsers = (): User[] => {
-    if (!isClient) return []; // ✅ Trả về mảng rỗng nếu đang chạy trên server
+    if (!isClient) return [];
     return JSON.parse(localStorage.getItem("registeredUsers") || "[]");
   };
 
   const checkAuth = (): void => {
-    if (!isClient) return; // ✅ Tránh lỗi khi chạy trên server
+    if (!isClient) return;
     const savedUser = localStorage.getItem("user");
     if (savedUser) user.value = JSON.parse(savedUser);
   };
-  checkAuth();
 
+    checkAuth(); 
+ 
+    if (isClient) {
+      watchEffect(() => {
+        checkAuth();
+      });
+    }
   const isAuthenticated = computed(() => !!user.value);
 
   const register = async (formData: User): Promise<void> => {
     isLoading.value = true;
-    errorMessage.value = "";
+    errorMessage.value = null;
     await new Promise((r) => setTimeout(r, 1500));
 
     if (!formData.username || !formData.password) {
@@ -40,7 +47,7 @@ export const useAuthStore = defineStore("auth", () => {
       return;
     }
 
-    if (!isClient) return; // ✅ Đảm bảo chỉ chạy trên client-side
+    if (!isClient) return;
     const registeredUsers = getRegisteredUsers();
 
     if (registeredUsers.some((u) => u.username === formData.username)) {
@@ -56,10 +63,10 @@ export const useAuthStore = defineStore("auth", () => {
 
   const login = async (formData: User): Promise<void> => {
     isLoading.value = true;
-    errorMessage.value = "";
+    errorMessage.value = null;
     await new Promise((r) => setTimeout(r, 1500));
 
-    if (!isClient) return; // ✅ Đảm bảo chỉ chạy trên client-side
+    if (!isClient) return;
     const userFound = getRegisteredUsers().find(
       (u) => u.username === formData.username && u.password === formData.password
     );
@@ -67,7 +74,7 @@ export const useAuthStore = defineStore("auth", () => {
     if (userFound) {
       user.value = userFound;
       localStorage.setItem("user", JSON.stringify(userFound));
-      router.push("/users");
+      router.push("/");
     } else {
       errorMessage.value = "Sai username hoặc password!";
     }
@@ -76,7 +83,7 @@ export const useAuthStore = defineStore("auth", () => {
   };
 
   const logout = (): void => {
-    if (!isClient) return; // ✅ Tránh lỗi trên server
+    if (!isClient) return;
     user.value = null;
     localStorage.removeItem("user");
     router.push("/login");
@@ -91,5 +98,9 @@ export const useAuthStore = defineStore("auth", () => {
     checkAuth,
     isLoading,
     errorMessage,
-  };
-});
+    };
+  },
+  {
+    persist: process.client ? { storage: localStorage } : false,
+  }
+);

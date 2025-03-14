@@ -1,6 +1,21 @@
 <template>
   <div class="card">
-    <ConfirmDialog></ConfirmDialog>
+    <Toast />
+    <ConfirmDialog group="headless" class=" items-center w-[15%]  border-b border-surface-200 dark:border-surface-700">
+      <template #container="{ message, acceptCallback, rejectCallback }">
+        <div class="flex flex-col items-center p-8 bg-surface-0 dark:bg-surface-900 rounded">
+                <div class="rounded-full bg-black text-white inline-flex justify-center items-center h-24 w-24 -mt-20">
+                    <i class="pi pi-question !text-4xl"></i>
+                </div>
+        <span class="font-bold text-2xl block mb-2 mt-6  whitespace-nowrap">{{ message.header }}</span>
+        <p class="mb-0">{{ message.message }}</p>
+                <div class="flex items-center gap-2 mt-6">
+                    <Button label="Delete" severity="danger" @click="acceptCallback"></Button>
+                    <Button label="Cancel" outlined @click="rejectCallback"></Button>
+                </div>
+              </div>
+      </template>
+    </ConfirmDialog>
     <DataTable
       v-model:selection="selectedProducts"
       v-model:filters="filters"
@@ -74,6 +89,12 @@
         In total there are {{ products.length }} products.
       </template> -->
     </DataTable>
+    <Dialog v-model:visible="userStore.isLoading" modal header="Processing..." :closable="false">
+    <div class="flex flex-col items-center justify-center p-5">
+      <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+      <p class="mt-3">Deleting items, please wait...</p>
+    </div>
+  </Dialog>
   </div>
   <!-- <UsersDialogEdit
     v-if="isDialogOpen"
