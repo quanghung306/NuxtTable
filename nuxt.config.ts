@@ -4,6 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ["@nuxtjs/tailwindcss", "@pinia/nuxt", "@primevue/nuxt-module"],
   css: ["primeicons/primeicons.css"],
+  
   primevue: {
     options: {
       ripple: true, 

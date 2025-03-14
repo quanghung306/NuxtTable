@@ -16,7 +16,9 @@ export const useDataStore = defineStore("data", () => {
   const sortOrder = ref<"asc" | "desc">("asc");
   const searchQuery = ref<string>("");
   const apiURL = ref<string>("");
-
+  const confirm = useConfirm();
+  const toast = useToast();
+  const isLoading = ref(false);
   // Set API URL
   const SetApi = (url: string) => {
     apiURL.value = url;
@@ -73,7 +75,6 @@ export const useDataStore = defineStore("data", () => {
         alert("❌ Please enter complete information!");
         return false;
       }
-
       if (newItem.id) {
         await axios.put(`${apiURL.value}/${newItem.id}`, newItem);
         items.value = items.value.map((item) =>
@@ -92,38 +93,73 @@ export const useDataStore = defineStore("data", () => {
     }
   };
 
-  const deleteItem = async (itemId: string) => {
-    if (!apiURL.value) return;
-    try {
-      await axios.delete(`${apiURL.value}/${itemId}`);
-      items.value = items.value.filter((item) => item.id !== itemId);
-      alert("✅ Deleted successfully!");
-    } catch (error) {
-      console.error("❌ Delete error:", error);
-    }
-  };
+  // const deleteItem = async (itemId: string) => {
+  //   if (!apiURL.value) return;
+  //   try {
+  //     await axios.delete(`${apiURL.value}/${itemId}`);
+  //     items.value = items.value.filter((item) => item.id !== itemId);
+  //     alert("✅ Deleted success!");
+  //   } catch (error) {
+  //     console.error("❌ Delete error:", error);
+  //   }
+  // };
 
   const deleteMultipleItems = async (selectedIds: string[]) => {
     if (selectedIds.length === 0) {
-      alert("ℹ️ No items selected!");
+      toast.add({
+        severity: "info",
+        summary: "No Selection",
+        detail: "ℹ️ No items selected!",
+        life: 3000,
+      });
       return;
     }
-
-    const isConfirmed = confirm(`🛑 Delete ${selectedIds.length} items?`);
-    if (!isConfirmed) return;
-
-    console.log("🗑️ Deleting items...");
-    try {
-      for (const id of selectedIds) {
-        await axios.delete(`${apiURL.value}/${id}`);
-        items.value = items.value.filter((item) => item.id !== id);
-      }
-      await fetchData();
-      alert("✅ Deleted successfully!");
-    } catch (error) {
-      console.error("❌ Delete error:", error);
-      alert("❌ Failed to delete!");
-    }
+    // confirm(`🛑 Delete ${selectedIds.length} items?`);
+    confirm.require({
+      group: 'headless',
+      message: `Delete ${selectedIds.length} items?`,
+      header: "Are you sure?",
+      icon: "pi pi-info-circle",
+      rejectProps: {
+        label: "Cancel",
+        severity: "secondary",
+        outlined: true,
+      },
+      acceptProps: {
+        label: "Delete",
+        severity: "danger",
+      },
+      accept: async () => {
+        isLoading.value = true;
+        try {
+          for (const id of selectedIds) {
+            await axios.delete(`${apiURL.value}/${id}`);
+            items.value = items.value.filter((item) => item.id !== id);
+          }
+          await fetchData();
+          toast.add({
+            severity: "info",
+            summary: "Confirmed",
+            detail: `✅ Deleted ${selectedIds.length} items successfully!`,
+            life: 3000,
+            
+          });
+        } catch (error) {
+          console.error("❌ Delete error:", error);
+          alert("❌ Failed to delete!");
+        }finally {
+          isLoading.value = false; 
+        }
+      },
+      reject: () => {
+        toast.add({
+          severity: "error",
+          summary: "Rejected",
+          detail: "Canceled delete operation!",
+          life: 3000,
+        });
+      },
+    });
   };
 
   const updateItem = async (id: string, updatedData: Partial<Item>) => {
@@ -145,11 +181,12 @@ export const useDataStore = defineStore("data", () => {
     sortOrder,
     searchQuery,
     SetApi,
+    isLoading,
     sortedItems,
     toggleSort,
     setSearchQuery,
     saveItem,
-    deleteItem,
+    // deleteItem,
     deleteMultipleItems,
     fetchData,
     updateItem,

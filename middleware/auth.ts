@@ -1,10 +1,19 @@
-import { defineNuxtRouteMiddleware, navigateTo } from "nuxt/app";
-import { useAuthStore } from "~/stores/authStore";
+import { defineNuxtRouteMiddleware, navigateTo } from "#app";
+import { useAuthStore } from "~/stores/authStore"; // Đường dẫn đến store của bạn
 
 export default defineNuxtRouteMiddleware((to) => {
-    const authStore = useAuthStore();
-    if (!authStore.user && to.path !== '/login') {
-      return navigateTo('/login');
-    }
-  });
+ 
+  if (import.meta.server) return;
+
+  const authStore = useAuthStore();
+
   
+  if (!authStore.isAuthenticated && to.path !== "/login") {
+    return navigateTo("/login");
+  }
+
+  
+  if (authStore.isAuthenticated && to.path === "/login") {
+    return navigateTo("/");
+  }
+});
