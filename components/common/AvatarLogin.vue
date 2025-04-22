@@ -1,5 +1,5 @@
 <template>
-    <div class="relative inline-block">
+    <div class="relative inline-block ">
       <!-- Avatar -->
       <img
         :src="'https://res.cloudinary.com/quanghung/image/upload/v1739957900/350512317_2248145465395698_4189543060711641401_n_xcokha.jpg'"
@@ -23,7 +23,6 @@
   
   <script setup lang="ts">
   const authStore = useAuthStore();
-  const router = useRouter();
   const menu = ref<InstanceType<typeof OverlayPanel>>();
   const menuTrigger = ref<HTMLElement>();
   

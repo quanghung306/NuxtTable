@@ -2,45 +2,40 @@
   <div class="flex whitespace-nowrap">
     <!-- Sidebar -->
     <div
-      class="h-screen bg-white dark:bg-surface-900 shadow-lg transition-all duration-300"
-      :class="visible ? 'w-64' : 'w-16'"
+      class="h-screen bg-white dark:bg-surface-900 shadow-lg transition-all duration-300 "
+      :class="visible ? 'w-64' : 'w-20'"
     >
-      <div class="flex items-center justify-between p-4">
-        <span v-if="visible" class="font-semibold text-2xl text-primary">Dashboard</span>
+      <div class="flex items-center justify-between p-4 ">
+        <span v-if="visible" class="font-semibold text-2xl text-primary"
+          >Dashboard</span
+        >
         <Button
           type="button"
           @click="toggleSidebar"
-          :icon="visible ? 'pi pi-times' : 'pi pi-bars'"
+          :icon="visible ? 'pi pi-chevron-right' : 'pi pi-chevron-left'"
           rounded
+          transition-all 
+          duration-300
           outlined
         />
       </div>
 
-      <div class="p-4 ">
-        <ul class="space-y-4 ">
-          <li>
-            <a
-              class="flex items-center p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition"
+      <div class="p-4">
+        <ul class="space-y-4">
+          <li v-for="item in menuItems" :key="item.to">
+            <NuxtLink
+              :to="item.to"
+              class="flex items-center px-4 py-4 rounded transition"
+              :class="{
+                'bg-gray-200 dark:bg-gray-800': isActive(item.to),
+                'hover:bg-gray-200 dark:hover:bg-gray-800': !isActive(item.to),
+              }"
             >
-              <i class="pi pi-home text-lg"></i>
-              <span v-if="visible" class="ml-2 font-medium">Dashboard</span>
-            </a>
-          </li>
-          <li>
-            <a
-              class="flex items-center p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition"
-            >
-              <i class="pi pi-bookmark text-lg"></i>
-              <span v-if="visible" class="ml-2 font-medium">Bookmarks</span>
-            </a>
-          </li>
-          <li>
-            <a
-              class="flex items-center p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition"
-            >
-              <i class="pi pi-users text-lg"></i>
-              <span v-if="visible" class="ml-2 font-medium">Team</span>
-            </a>
+              <i :class="item.icon" class="text-lg"></i>
+              <span v-if="visible" class="ml-2 font-medium">{{
+                item.label
+              }}</span>
+            </NuxtLink>
           </li>
         </ul>
       </div>
@@ -49,11 +44,26 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
+import { useRoute } from "vue-router";
 
 const visible = ref(true);
+const route = useRoute();
+
+const menuItems = ref([
+  { label: "Dashboard", to: "/", icon: "pi pi-home" },
+  { label: "Bookmarks", to: "/UnderConstruction", icon: "pi pi-bookmark" },
+]);
 
 const toggleSidebar = () => {
   visible.value = !visible.value;
 };
+
+const isActive = (path) => computed(() => route.path === path).value;
 </script>
+
+<style scoped>
+.router-link-exact-active {
+  background-color: #e5e7eb; /* Màu khi active */
+}
+</style>
